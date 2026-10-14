@@ -2,22 +2,37 @@
 // ค่าที่ผิดชนิดหรืออยู่นอกช่วง เซิร์ฟเวอร์จะใช้ค่าเริ่มต้นแทนและเขียนคำเตือนใน log (R-3-02)
 module.exports = {
   // ---------- เวลา (วินาที) ----------
-  conspireSeconds: 90,        // เจรจาก่อนโหวตแต่ละครั้ง
+  conspireSecondsFirst: 90,   // เจรจาก่อนโหวตครั้งแรกของแต่ละรอบ
+  conspireSecondsNext: 45,    // เจรจาก่อนโหวตซ้ำในรอบเดียวกัน (ครั้งที่ 2 เป็นต้นไป)
   voteSeconds: 30,            // ช่วงโหวต
-  ambushPickSeconds: 20,      // Ambush เลือกคนที่จะกำจัด
-  showdownTalkSeconds: 60,    // เจรจาก่อนเลือกไพ่ Showdown
-  showdownPickSeconds: 30,    // เลือกไพ่ Showdown
-  resultSeconds: 8,           // แสดงผลก่อนไปขั้นถัดไป
+  ambushPickSeconds: 20,      // ซุ่มโจมตีเลือกคนที่จะกำจัด
+  showdownTalkSeconds: 60,    // เจรจาก่อนเลือกไพ่ดวล (0 = ข้ามไปเลือกไพ่เลย)
+  showdownPickSeconds: 30,    // เลือกไพ่ดวล
+  voteResultSeconds: 8,       // แสดงผลโหวต
+  roundEndSeconds: 8,         // แสดงผลจบรอบ (เหลือ 1 คน / ไม่มีผู้รอด)
+  showdownResultSeconds: 10,  // แสดงผลการดวล
+  timerWarnSeconds: 5,        // นาฬิกากะพริบเมื่อเหลือเวลาไม่เกินเท่านี้ (0 = ไม่กะพริบ)
   gmHandoverSeconds: 30,      // GM หลุดนานเท่านี้ ย้ายสิทธิ์ GM
   roomIdleMinutes: 30,        // ไม่มีใครออนไลน์นานเท่านี้ (นาที) ลบห้อง
 
   // ---------- ผู้เล่นและการชนะ ----------
-  minPlayers: 6,
+  minPlayers: 3,
   maxPlayers: 12,
-  largeGroupFrom: 10,         // ผู้เล่นตั้งแต่จำนวนนี้ใช้เกณฑ์ winPointsLarge
-  winPointsSmall: 25,
-  winPointsLarge: 24,
-  tiebreakMaxShowdowns: 3,    // Tie-break ได้สูงสุดกี่ครั้ง แล้วชนะร่วม
+  // แต้มที่ต้องเก็บให้ถึงเพื่อชนะ แยกตามจำนวนผู้เล่นในห้อง  จำนวนผู้เล่น: แต้ม
+  // ถ้าลบบางบรรทัดออก จำนวนนั้นจะใช้ค่าของจำนวนที่น้อยกว่าที่ใกล้ที่สุด
+  winPointsByPlayers: {
+    3: 20,
+    4: 22,
+    5: 24,
+    6: 25,
+    7: 25,
+    8: 25,
+    9: 25,
+    10: 24,
+    11: 24,
+    12: 24,
+  },
+  tiebreakMaxShowdowns: 3,    // ดวลตัดสินได้สูงสุดกี่ครั้ง แล้วชนะร่วม
 
   // ---------- ทอง ----------
   deckCount3: 26,             // จำนวนแท่งค่า 3

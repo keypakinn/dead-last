@@ -1,6 +1,6 @@
 # Dead Last (ออนไลน์)
 
-เกมโหวตหักหลังสำหรับเล่นกับเพื่อน 6–12 คนบนมือถือ ธีมสมรภูมิ "ระเบิดเวลา"
+เกมโหวตหักหลังสำหรับเล่นกับเพื่อน 3–12 คนบนมือถือ ธีมสมรภูมิ "ระเบิดเวลา"
 ทุกคนแย่งกันเป็นผู้รอด 2 คนสุดท้ายเพื่อดวลแบ่งทองด้วยไพ่ SHARE / STEAL / GRAB ONE & GO ใครเก็บทองถึงเกณฑ์ก่อนชนะ
 กติกาฉบับเต็มอยู่ในเกม (ปุ่ม 📖 วิธีเล่น และปุ่ม ? ทุกช่วง)
 
@@ -13,16 +13,16 @@ npm install
 npm start
 ```
 
-เปิด http://localhost:3000 — ทดลองคนเดียวหลายแท็บได้ ถ้าอยากเริ่มด้วยคนน้อยกว่า 6 ให้รัน `MIN_PLAYERS=2 npm start`
+เปิด http://localhost:3000 — ทดลองคนเดียวหลายแท็บได้ ถ้าอยากลองคนเดียว 2 แท็บ ให้รัน `MIN_PLAYERS=2 npm start`
 
 ## ปรับตัวเลขในเกม (`config.js`)
 
-แก้เลขหลัง `:` ได้เลย เช่น `voteSeconds: 30` → `voteSeconds: 45` แล้วอัปไฟล์ขึ้น GitHub (ทำตอนไม่มีคนเล่น)
+แก้เลขหลัง `:` ได้เลย เช่น `voteSeconds: 30` → `voteSeconds: 45` หรือแต้มชนะของวง 4 คน `4: 22` → `4: 18` แล้วอัปไฟล์ขึ้น GitHub (ทำตอนไม่มีคนเล่น)
 
 | กลุ่ม | ค่า |
 |---|---|
-| เวลา (วินาที) | `conspireSeconds` เจรจา, `voteSeconds` โหวต, `ambushPickSeconds` ซุ่มโจมตีเลือกคน, `showdownTalkSeconds` / `showdownPickSeconds` ดวล, `resultSeconds` แสดงผล, `gmHandoverSeconds` ย้าย GM |
-| ผู้เล่นและการชนะ | `minPlayers`, `maxPlayers`, `largeGroupFrom`, `winPointsSmall`, `winPointsLarge`, `tiebreakMaxShowdowns` |
+| เวลา (วินาที) | `conspireSecondsFirst` เจรจาครั้งแรกของรอบ, `conspireSecondsNext` เจรจาตอนโหวตซ้ำ, `voteSeconds` โหวต, `ambushPickSeconds` ซุ่มโจมตีเลือกคน, `showdownTalkSeconds` / `showdownPickSeconds` ดวล, `voteResultSeconds` / `roundEndSeconds` / `showdownResultSeconds` แสดงผลแต่ละแบบ, `timerWarnSeconds` นาฬิกากะพริบ, `gmHandoverSeconds` ย้าย GM |
+| ผู้เล่นและการชนะ | `minPlayers`, `maxPlayers`, `winPointsByPlayers` (แต้มชนะแยกตามจำนวนคน เช่น `3: 20`), `tiebreakMaxShowdowns` |
 | ทอง | `deckCount3/4/5` จำนวนแท่งแต่ละค่า, `potSize` ทองกลางวงต่อรอบ, `compensationBars` ทองปลอบใจ |
 | แชท | `chatMaxLength`, `chatMinIntervalMs`, `chatHistory` |
 | ตัวเลือกกฎ | `zeroSurvivorCompensation`, `hiddenScores`, `showdownTimeoutChoice`, `ambushTimeoutPick` |
@@ -32,7 +32,7 @@ npm start
 ## การ์ดและภาพ (`cards/`)
 
 - ข้อความบนการ์ดอยู่ที่ `cards/data.csv` ตำแหน่งอยู่ที่ `cards/template-*.json` กรอบคือ `cards/frame-*.png`
-- ภาพในการ์ดใส่ที่ `cards/art/` 4 ไฟล์: `unit`, `ambush`, `showdown`, `gold` นามสกุล `.webp`, `.png` หรือ `.jpg` (ตัวพิมพ์เล็ก) ไม่ใส่ก็เล่นได้ จะเห็นพื้นสีกับชื่อแทน
+- ภาพในการ์ดอยู่ที่ `cards/art/` 6 ภาพ: `unit`, `ambush`, `share`, `steal`, `grab`, `gold` นามสกุล `.webp`, `.png` หรือ `.jpg` (ตัวพิมพ์เล็ก) ถ้ามีชื่อเดียวกันหลายนามสกุล เกมใช้ `.webp` ก่อน
 - รายละเอียดคอลัมน์ ขนาดภาพ และ prompt สร้างภาพ ดู `cards/README.md`
 - หลังแก้การ์ด เปิด `/preview` ดูว่าครบ ไม่มีกรอบแดง (ข้อความล้น) และภาพขึ้น
 

@@ -132,7 +132,7 @@ ${isGm() ? `<button class="btn block gold" data-act="start" ${canStart ? '' : 'd
   ${n < st.minPlayers ? `<p class="muted small center">รออีก ${st.minPlayers - n} คน</p>` : ''}` : '<p class="muted center">รอ GM เริ่มเกม…</p>'}
 <button class="btn block ghost" data-act="leave">ออกจากห้อง</button>
 </div>
-<p class="muted small center">เวลาเจรจา ${c.conspireSeconds} วิ · โหวต ${c.voteSeconds} วิ · เป้าหมาย ${n >= c.largeGroupFrom ? c.winPointsLarge : c.winPointsSmall} แต้ม</p>`;
+<p class="muted small center">เวลาเจรจา ${c.conspireSecondsFirst} วิ · โหวต ${c.voteSeconds} วิ · เป้าหมาย ${c.winPointsByPlayers ? c.winPointsByPlayers[Math.max(2, Math.min(12, n))] : '-'} แต้ม (${n} คน)</p>`;
   }
 
   function hud() {
@@ -353,7 +353,8 @@ ${isGm() ? '<button class="btn block gold" data-act="again">เล่นอี�
     const ms = Math.max(0, st.endsAt - (Date.now() + S.offset));
     const s = Math.ceil(ms / 1000);
     el.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-    el.className = 'led' + (s <= 5 ? ' low' : '');
+    const warnAt = Number(cfg().timerWarnSeconds); // config.js: timerWarnSeconds
+    el.className = 'led' + (warnAt > 0 && s <= warnAt ? ' low' : '');
   }
   setInterval(tickTimer, 250);
 

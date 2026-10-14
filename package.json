@@ -1,7 +1,7 @@
 {
   "name": "dead-last",
   "version": "1.0.0",
-  "description": "Dead Last — เกมโหวตหักหลังออนไลน์ 6–12 คน เล่นบนมือถือ",
+  "description": "Dead Last — เกมโหวตหักหลังออนไลน์ 3–12 คน เล่นบนมือถือ",
   "main": "server.js",
   "private": true,
   "scripts": {

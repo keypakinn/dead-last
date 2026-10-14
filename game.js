@@ -76,7 +76,7 @@ class Room {
   telemetry(type, data) { if (!this.quiet) console.log(JSON.stringify({ tel: type, room: this.code, ...data })); }
   changed() { this.version++; try { this.onChange(this); } catch (e) { console.error('onChange error', e); } }
   player(pid) { const p = this.players.get(pid); if (!p) throw new GameError('NOT_IN_ROOM', 'ไม่พบผู้เล่นนี้ในห้อง'); return p; }
-  get cfgWin() { return this.order.length >= this.cfg.largeGroupFrom ? this.cfg.winPointsLarge : this.cfg.winPointsSmall; }
+  get cfgWin() { const t = this.cfg.winPointsByPlayers, n = Math.max(2, Math.min(12, this.order.length)); return t[n]; } // R-5-05 เกณฑ์ชนะตามจำนวนผู้เล่น
   connectedCount() { let n = 0; for (const p of this.players.values()) if (p.connected) n++; return n; }
 
   // ---------- ห้องและผู้เล่น ----------
@@ -299,7 +299,8 @@ class Room {
   nextVote() { // R-7-01
     const g = this.g;
     g.voteNo++; g.eligible = this.alive(); g.votes = new Map(); g.vr = null;
-    this.setPhase(PH.CONSPIRE, this.cfg.conspireSeconds, () => this.startVote());
+    const secs = g.voteNo === 1 ? this.cfg.conspireSecondsFirst : this.cfg.conspireSecondsNext; // ครั้งแรกของรอบ / โหวตซ้ำ
+    this.setPhase(PH.CONSPIRE, secs, () => this.startVote());
   }
   startVote() { this.setPhase(PH.VOTE, this.cfg.voteSeconds, () => this.resolveVote()); }
 
@@ -410,7 +411,7 @@ class Room {
     g.history.push({ kind: 'vote', round: g.round, voteNo: g.voteNo, choices: vr.choices, tally: vr.tally, targets: vr.targets,
       eliminated: vr.eliminated, reasons, picks: vr.ambush.map(a => ({ ambusher: a.ambusher, pick: a.pick })) });
     this.log('vote_result', { eliminated: vr.eliminated, reasons, survivors: vr.survivors });
-    this.setPhase(PH.RESULT, this.cfg.resultSeconds, () => this.afterResult());
+    this.setPhase(PH.RESULT, this.cfg.voteResultSeconds, () => this.afterResult());
   }
 
   afterResult() {
@@ -440,7 +441,7 @@ class Room {
     g.roundEnd = { outcome, items, carried: g.pot.length };
     g.history.push({ kind: 'award', round: g.round, outcome, items });
     this.telemetry('round_end', { round: g.round, outcome, votes: g.voteNo, compensationBars: items.filter(i => i.reason === 'ZERO_COMP').length });
-    this.setPhase(PH.ROUND_END, this.cfg.resultSeconds, () => this.winCheck());
+    this.setPhase(PH.ROUND_END, this.cfg.roundEndSeconds, () => this.winCheck());
   }
 
   // ---------- Showdown ----------
@@ -493,7 +494,7 @@ class Room {
     g.history.push({ kind: 'showdown', round: g.round, type: sd.type, a: sd.a, b: sd.b, ...sd.result });
     this.telemetry('showdown_reveal', { choiceA: ca, choiceB: cb, byTimeout: byTimeout.length, type: sd.type });
     this.log('showdown_result', { a: sd.a, b: sd.b, ca, cb, gotA, gotB, comp });
-    this.setPhase(PH.SD_RESULT, this.cfg.resultSeconds, () => (sd.type === 'NORMAL' ? this.winCheck() : this.tiebreakCheck()));
+    this.setPhase(PH.SD_RESULT, this.cfg.showdownResultSeconds, () => (sd.type === 'NORMAL' ? this.winCheck() : this.tiebreakCheck()));
   }
 
   // ---------- ชนะ ----------
@@ -677,8 +678,9 @@ class Room {
 }
 
 function publicConfig(c) {
-  const keys = ['conspireSeconds', 'voteSeconds', 'ambushPickSeconds', 'showdownTalkSeconds', 'showdownPickSeconds', 'resultSeconds',
-    'minPlayers', 'maxPlayers', 'largeGroupFrom', 'winPointsSmall', 'winPointsLarge', 'tiebreakMaxShowdowns',
+  const keys = ['conspireSecondsFirst', 'conspireSecondsNext', 'voteSeconds', 'ambushPickSeconds', 'showdownTalkSeconds', 'showdownPickSeconds',
+    'voteResultSeconds', 'roundEndSeconds', 'showdownResultSeconds', 'timerWarnSeconds',
+    'minPlayers', 'maxPlayers', 'winPointsByPlayers', 'tiebreakMaxShowdowns',
     'deckCount3', 'deckCount4', 'deckCount5', 'potSize', 'compensationBars', 'chatMaxLength',
     'zeroSurvivorCompensation', 'hiddenScores', 'showdownTimeoutChoice', 'ambushTimeoutPick'];
   const o = {}; for (const k of keys) o[k] = c[k]; return o;

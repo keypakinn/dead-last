@@ -68,16 +68,19 @@ function scanArt(artDir) {
   const map = {}, warnings = [];
   let files = [];
   try { files = fs.readdirSync(artDir); } catch (e) { return { map, warnings, listing: '' }; }
-  const listing = [];
+  const listing = [], sizes = {};
   for (const f of files.sort()) {
     const m = /^([a-z0-9][a-z0-9-]{0,39})\.(webp|png|jpg)$/.exec(f);
     if (!m) { if (!f.startsWith('.')) warnings.push(`art/${f}: ชื่อไฟล์ต้องเป็นตัวพิมพ์เล็กและนามสกุล .webp .png หรือ .jpg — ไม่ใช้ไฟล์นี้`); continue; }
     let size = 0; try { size = fs.statSync(path.join(artDir, f)).size; } catch (e) { /* ignore */ }
-    listing.push(f + ':' + size);
-    if (size > 300 * 1024) warnings.push(`art/${f}: ขนาด ${Math.round(size / 1024)} KB ใหญ่กว่า 300 KB อาจโหลดช้าบนมือถือ`);
+    listing.push(f + ':' + size); sizes[f] = size;
     const stem = m[1], ext = m[2];
     const cur = map[stem];
     if (!cur || SCHEMA.artExt.indexOf(ext) < SCHEMA.artExt.indexOf(cur.split('.').pop())) map[stem] = f;
+  }
+  // เตือนขนาดเฉพาะไฟล์ที่เกมเลือกใช้จริง (ถ้ามี .webp อยู่ ไฟล์ .png/.jpg ชื่อเดียวกันจะไม่ถูกใช้)
+  for (const f of Object.values(map)) {
+    if (sizes[f] > 300 * 1024) warnings.push(`art/${f}: ขนาด ${Math.round(sizes[f] / 1024)} KB ใหญ่กว่า 300 KB อาจโหลดช้าบนมือถือ`);
   }
   return { map, warnings, listing: listing.join('|') };
 }

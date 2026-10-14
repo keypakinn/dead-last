@@ -359,9 +359,24 @@ test('T-16 ถึงเกณฑ์ 2 คน 26 กับ 28 → 28 ชนะ (R
   t.room.winCheck();
   assert.deepStrictEqual(t.room.g.winners, [t.id.P2]);
 });
-test('T-28 เกณฑ์ชนะ: 9 คน = 25, 10 คน = 24 (R-5-05)', () => {
+test('T-28 เกณฑ์ชนะตามจำนวนผู้เล่น: 3 คน = 20, 5 คน = 24, 9 คน = 25, 10 คน = 24 (R-5-05)', () => {
+  assert.strictEqual(mk(3).room.g.winPoints, 20);
+  assert.strictEqual(mk(5).room.g.winPoints, 24);
   assert.strictEqual(mk(9).room.g.winPoints, 25);
   assert.strictEqual(mk(10).room.g.winPoints, 24);
+  assert.strictEqual(mk(4, { winPointsByPlayers: { 3: 18, 4: 19, 5: 21 } }).room.g.winPoints, 19);
+});
+test('winPointsByPlayers: ใส่บางจำนวน → จำนวนที่ขาดใช้ค่าของจำนวนที่น้อยกว่า, ค่าผิดถูกข้ามพร้อมคำเตือน', () => {
+  const w = [];
+  const c = validate({ winPointsByPlayers: { 3: 20, 6: 30, 7: 'x', 15: 9 } }, m => w.push(m));
+  assert.deepStrictEqual([c.winPointsByPlayers[3], c.winPointsByPlayers[5], c.winPointsByPlayers[7], c.winPointsByPlayers[12]], [20, 20, 30, 30]);
+  assert.strictEqual(w.length, 2);
+  const d = validate({ winPointsByPlayers: [1, 2] }, m => w.push(m));
+  assert.strictEqual(d.winPointsByPlayers[6], 25);
+  const e = validate({ winPointsByPlayers: { 6: 30 } }, () => {});
+  assert.strictEqual(e.winPointsByPlayers[3], 20, 'ต่ำกว่าจำนวนที่ใส่ไว้ใช้ค่าเริ่มต้น');
+  const old = []; validate({ conspireSeconds: 60, winPointsSmall: 20 }, m => old.push(m));
+  assert.strictEqual(old.length, 2, 'ชื่อเก่าแจ้งเตือนว่าไม่ใช้แล้ว');
 });
 test('T-27 สำรับเหลือ 2 แท่ง + STEAL/STEAL → 2 คนได้ทอง แล้วจบเกม คนแต้มสูงสุดชนะ (R-8-31)', () => {
   const t = toShowdown6();
@@ -514,11 +529,27 @@ test('T-25 voteSeconds = 5 → ใช้ 30 และมีคำเตือน
   assert.strictEqual(c.voteSeconds, 30); assert.strictEqual(c.hiddenScores, true);
   assert.strictEqual(w.length, 2);
   const c2 = validate({ minPlayers: 10, maxPlayers: 8 }, () => {});
-  assert.deepStrictEqual([c2.minPlayers, c2.maxPlayers], [6, 12]);
+  assert.deepStrictEqual([c2.minPlayers, c2.maxPlayers], [3, 12]);
 });
-test('T-26 conspireSeconds = 45 → ช่วงเจรจา 45 วินาที (R-3-01)', () => {
-  const t = mk(3, { conspireSeconds: 45 });
+test('T-26 conspireSecondsFirst = 45 → ช่วงเจรจาครั้งแรก 45 วินาที, โหวตซ้ำใช้ conspireSecondsNext (R-3-01)', () => {
+  const t = mk(6, { conspireSecondsFirst: 45, conspireSecondsNext: 20 });
   assert.strictEqual(t.room.timer.endsAt - t.clock.t, 45_000);
+  vote(t, { P1: 'P5', P2: 'P5', P3: 'P5', P4: 'P5', P5: 'P1', P6: 'P1' });
+  nextFromResult(t.room);
+  assert.strictEqual(t.room.phase, PH.CONSPIRE);
+  assert.strictEqual(t.room.timer.endsAt - t.clock.t, 20_000);
+});
+test('แยกเวลาแสดงผล: ผลโหวต / จบรอบ / ผลดวล ใช้ค่าของตัวเอง', () => {
+  const o = { voteResultSeconds: 4, roundEndSeconds: 6, showdownResultSeconds: 12 };
+  const t = toShowdown6(o);
+  pickSd(t, 'SHARE', 'SHARE');
+  assert.strictEqual(t.room.timer.endsAt - t.clock.t, 12_000);
+  const r = mk(3, o);
+  vote(r, { P1: 'P2', P2: 'P3', P3: 'P1' });
+  assert.strictEqual(r.room.timer.endsAt - r.clock.t, 4_000);
+  nextFromResult(r.room);
+  assert.strictEqual(r.room.phase, PH.ROUND_END);
+  assert.strictEqual(r.room.timer.endsAt - r.clock.t, 6_000);
 });
 
 console.log('แชท');
@@ -596,10 +627,10 @@ test('template ทุกช่องอ้างคอลัมน์ที่�
 });
 
 console.log('จำลองเล่นสุ่ม');
-test('T-30 เล่นสุ่ม 1,000 เกม 6–12 คน: ทุกเกมจบ ทองรวมคงที่ แต้ม = ผลรวม transaction (R-4-02, R-8-41)', () => {
+test('T-30 เล่นสุ่ม 1,000 เกม 3–12 คน: ทุกเกมจบ ทองรวมคงที่ แต้ม = ผลรวม transaction (R-4-02, R-8-41)', () => {
   let rounds = 0, ties = 0;
   for (let gno = 0; gno < 1000; gno++) {
-    const n = 6 + (gno % 7);
+    const n = 3 + (gno % 10);
     const t = mk(n, {}, { seed: 1000 + gno });
     const room = t.room, rnd = mulberry(77 + gno);
     let steps = 0;

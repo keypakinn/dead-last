@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dead Last — ตรวจการ์ด</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&display=swap">
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .ck-preview [data-overflow] { outline: 3px solid var(--danger); }
+  .full { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .full figure { margin: 0; } .full figcaption { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .thumbs { display: flex; flex-wrap: wrap; gap: 10px; } .thumbs .ck-card { width: 110px; }
+  .sum li { margin: 4px 0; }
+</style>
+</head>
+<body class="ck-preview">
+<main style="max-width:1100px">
+  <h1 class="goldtxt">ตรวจการ์ด</h1>
+  <p class="muted small">หน้านี้ใช้ตรวจหลังแก้ cards/data.csv, template หรือใส่ภาพใน cards/art/ — กรอบแดง = ข้อความล้นช่อง</p>
+  <div id="sum" class="panel">กำลังโหลด…</div>
+  <h2>ขนาดเล็ก (110px แบบหน้าโหวต)</h2>
+  <div id="thumbs" class="thumbs"></div>
+  <h2>เต็มใบ</h2>
+  <div id="full" class="full"></div>
+</main>
+<script src="/card.js"></script>
+<script>
+(async function () {
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const cat = await (await fetch('/api/cards')).json();
+  CardKit.init(cat.templates, cat.version, '/cards/');
+  const sample = (c) => (c.template === 'unit' ? Object.assign({}, c, { player_name: 'ชื่อผู้เล่นยาวมาก' }) : c);
+  const thumbs = document.getElementById('thumbs'), full = document.getElementById('full');
+  for (const c of cat.cards) {
+    thumbs.appendChild(CardKit.render(sample(c), { mode: 'thumb' }));
+    const fig = document.createElement('figure');
+    fig.appendChild(CardKit.render(sample(c), { mode: 'full' }));
+    const cap = document.createElement('figcaption'); cap.textContent = `${c.id} · ${c.template} · ภาพ: ${c.artFile || 'ยังไม่มี (' + (c.art || c.id) + ')'}`;
+    fig.appendChild(cap); full.appendChild(fig);
+  }
+  const back = document.createElement('figure'); back.appendChild(CardKit.back());
+  const bc = document.createElement('figcaption'); bc.textContent = 'หลังการ์ด (back.png)'; back.appendChild(bc); full.appendChild(back);
+  CardKit.fitAll(document);
+  setTimeout(() => {
+    const over = [...document.querySelectorAll('[data-overflow]')].map((e) => e.closest('.ck-card').dataset.id);
+    window.OVER = over;
+    document.getElementById('sum').innerHTML = `<ul class="sum">
+      <li>การ์ด <b>${cat.cards.length}</b> ใบ · เวอร์ชัน <code>${esc(cat.version)}</code></li>
+      <li>ข้อความล้น: <b class="${over.length ? 'danger' : 'alive'}">${over.length}</b> ${over.length ? '(' + esc([...new Set(over)].join(', ')) + ')' : ''}</li>
+      <li>การ์ดที่เกมต้องใช้แต่ขาด: <b class="${cat.missing.length ? 'danger' : 'alive'}">${cat.missing.length ? esc(cat.missing.join(', ')) : 'ไม่มี'}</b></li>
+      <li>ภาพที่ยังไม่มีใน cards/art/: <b class="${cat.artMissing.length ? 'goldtxt' : 'alive'}">${cat.artMissing.length ? esc(cat.artMissing.map((a) => a + '.webp/.png/.jpg').join(', ')) : 'ครบ'}</b></li>
+      <li>หลังการ์ด: ${cat.hasBack ? 'มี' : '<b class="danger">ไม่มี back.png</b>'}</li>
+      ${cat.errors.length ? `<li class="danger">ข้อผิดพลาด:<br>${cat.errors.map(esc).join('<br>')}</li>` : ''}
+    </ul>`;
+    window.DONE = 1;
+  }, 1200);
+})();
+</script>
+</body>
+</html>

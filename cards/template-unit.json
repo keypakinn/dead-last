@@ -1,0 +1,30 @@
+{
+  "templateVersion": 1,
+  "kind": "unit",
+  "base": { "w": 600, "h": 900 },
+  "fonts": ["https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&display=swap"],
+  "frame": "frame-unit.png",
+  "art": { "x": 90, "y": 170, "w": 420, "h": 420, "radius": 210 },
+  "fallback": { "bg": "#24331F", "color": "#F2C230", "column": "name" },
+  "thumb": { "hide": ["name", "kind", "effect"] },
+  "slots": [
+    { "id": "player_name", "type": "text", "column": "player_name", "runtime": true,
+      "x": 50, "y": 40, "w": 500, "h": 100,
+      "font": { "family": "Chakra Petch", "weight": 700, "size": 52, "min": 28 },
+      "color": "#FF3B2F", "align": "center", "valign": "middle", "fit": "shrink" },
+    { "id": "color", "type": "swatch", "column": "color",
+      "x": 40, "y": 148, "w": 520, "h": 12, "radius": 6 },
+    { "id": "name", "type": "text", "column": "name",
+      "x": 60, "y": 620, "w": 340, "h": 52,
+      "font": { "family": "Chakra Petch", "weight": 700, "size": 30, "min": 26 },
+      "color": "#F2C230", "align": "left", "valign": "middle", "fit": "shrink" },
+    { "id": "kind", "type": "text", "column": "kind_label",
+      "x": 400, "y": 620, "w": 140, "h": 52,
+      "font": { "family": "Chakra Petch", "weight": 500, "size": 26, "min": 26 },
+      "color": "#4CAF50", "align": "right", "valign": "middle", "fit": "shrink" },
+    { "id": "effect", "type": "text", "column": "effect",
+      "x": 60, "y": 688, "w": 480, "h": 172,
+      "font": { "family": "Chakra Petch", "weight": 500, "size": 27, "min": 26, "lineHeight": 1.35 },
+      "color": "#E6E6E6", "align": "left", "valign": "top", "fit": "wrap" }
+  ]
+}

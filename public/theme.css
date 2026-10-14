@@ -1,0 +1,16 @@
+/* ธีมสมรภูมิ "ระเบิดเวลา" — เปลี่ยนสีทั้งเกมได้ที่ไฟล์นี้ */
+:root {
+  --bg: #1B1D1F;
+  --surface: #2A2D30;
+  --panel: #121315;
+  --led-bg: #0D0505;
+  --line: #45494D;
+  --text: #E6E6E6;
+  --text-muted: #A0A4A8;
+  --gold: #F2C230;
+  --on-gold: #2B2100;
+  --alive: #4CAF50;
+  --danger: #FF3B2F;
+  --radius: 10px;
+  --font: 'Chakra Petch', 'Noto Sans Thai', 'Leelawadee UI', Tahoma, sans-serif;
+}

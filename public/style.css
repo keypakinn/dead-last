@@ -139,3 +139,10 @@ label.lbl { display: block; font-size: 14px; color: var(--text-muted); margin: 1
 .notice { background: var(--panel); border: 1px dashed var(--gold); color: var(--gold); padding: 8px 10px; border-radius: 8px; font-size: 14px; margin: 8px 0; }
 .err { background: rgba(255,59,47,.12); border: 1px solid var(--danger); padding: 10px; border-radius: 8px; font-size: 14px; }
 .foot { margin-top: 12px; }
+.chosen { color: var(--gold); }
+.defense { color: #FF8A1F; }
+.legend { margin: -4px 0 8px; }
+.hint { color: var(--gold); text-align: center; margin: 0; }
+.defense-row { grid-template-columns: 110px; }
+.divider { text-align: center; margin: 10px 0 6px; display: flex; align-items: center; gap: 8px; }
+.divider::before, .divider::after { content: ''; flex: 1; border-top: 1px solid var(--line); }

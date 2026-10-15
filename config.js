@@ -5,7 +5,7 @@ module.exports = {
   conspireSecondsFirst: 90,   // เจรจาก่อนโหวตครั้งแรกของแต่ละรอบ
   conspireSecondsNext: 45,    // เจรจาก่อนโหวตซ้ำในรอบเดียวกัน (ครั้งที่ 2 เป็นต้นไป)
   voteSeconds: 30,            // ช่วงโหวต
-  ambushPickSeconds: 20,      // ซุ่มโจมตีเลือกคนที่จะกำจัด
+  defensePickSeconds: 20,     // คนที่ใช้ DEFENSE สำเร็จ เลือกคนที่จะกำจัด
   showdownTalkSeconds: 60,    // เจรจาก่อนเลือกไพ่ดวล (0 = ข้ามไปเลือกไพ่เลย)
   showdownPickSeconds: 30,    // เลือกไพ่ดวล
   voteResultSeconds: 8,       // แสดงผลโหวต
@@ -50,5 +50,5 @@ module.exports = {
   zeroSurvivorCompensation: true,  // ไม่มีผู้รอด: true = คนที่ตกรอบก่อนได้ชดเชย, false = ไม่มีใครได้
   hiddenScores: true,              // true = ซ่อนแต้มคนอื่นจนจบเกม
   showdownTimeoutChoice: 'share',  // 'share' | 'grab' | 'random'
-  ambushTimeoutPick: 'random',     // 'random' | 'none'
+  defenseTimeoutPick: 'random',     // 'random' | 'none'
 };

@@ -13,7 +13,7 @@ const PH = {
   END: 'GAME_END',
 };
 const SD_CHOICES = ['SHARE', 'STEAL', 'GRAB'];
-const REQUIRED_CARDS = ['ambush', 'share', 'steal', 'grab', 'gold-3', 'gold-4', 'gold-5'];
+const REQUIRED_CARDS = ['defense', 'share', 'steal', 'grab', 'gold-3', 'gold-4', 'gold-5'];
 const LOBBY_DROP_MS = 2 * 60 * 1000;   // Q6: หลุดใน Lobby เกิน 2 นาที เอาออก
 const TAKEOVER_TTL_MS = 2 * 60 * 1000;  // Q7: คำขอเปลี่ยนเครื่องหมดอายุ
 const NAME_MAX = 16;
@@ -309,7 +309,7 @@ class Room {
     if (this.phase !== PH.VOTE) throw new GameError('WRONG_PHASE', 'ยังไม่ใช่ช่วงโหวต');
     if (!g.eligible.includes(pid)) throw new GameError('NOT_ELIGIBLE', 'คุณไม่มีสิทธิ์โหวตครั้งนี้');
     const v = g.votes.get(pid);
-    if (v && v.locked) throw new GameError('ALREADY_LOCKED', 'ล็อกไปแล้ว');
+    if (v && v.locked) throw new GameError('ALREADY_LOCKED', 'ยืนยันไปแล้ว เปลี่ยนไม่ได้');
     if (target !== 'AMBUSH' && (target === pid || !g.eligible.includes(target))) throw new GameError('INVALID_TARGET', 'เลือกคนนี้ไม่ได้');
     g.votes.set(pid, { choice: target, locked: false });
     this.changed();
@@ -319,8 +319,8 @@ class Room {
     if (this.phase !== PH.VOTE) throw new GameError('WRONG_PHASE', 'ยังไม่ใช่ช่วงโหวต');
     if (!g.eligible.includes(pid)) throw new GameError('NOT_ELIGIBLE', 'คุณไม่มีสิทธิ์โหวตครั้งนี้');
     const v = g.votes.get(pid);
-    if (!v) throw new GameError('NOTHING_SELECTED', 'เลือกก่อนแล้วค่อยล็อก');
-    if (v.locked) throw new GameError('ALREADY_LOCKED', 'ล็อกไปแล้ว');
+    if (!v) throw new GameError('NOTHING_SELECTED', 'เลือกก่อนแล้วค่อยกดยืนยัน');
+    if (v.locked) throw new GameError('ALREADY_LOCKED', 'ยืนยันไปแล้ว เปลี่ยนไม่ได้');
     v.locked = true; v.lockedAt = this.now();
     this.changed();
     this.checkEarly(g.eligible.every(id => (g.votes.get(id) || {}).locked)); // R-7-14
@@ -358,7 +358,7 @@ class Room {
     const ambushers = Object.values(choices).filter(c => c === 'AMBUSH').length;
     this.telemetry('vote_reveal', { round: g.round, voteNo: g.voteNo, timeouts: byTimeout.length, ambushers, ambushTargets: ambush.length });
     this.log('vote_reveal', { choices, tally, targets });
-    if (ambush.some(a => !a.locked)) this.setPhase(PH.AMBUSH_PICK, this.cfg.ambushPickSeconds, () => this.finishVote());
+    if (ambush.some(a => !a.locked)) this.setPhase(PH.AMBUSH_PICK, this.cfg.defensePickSeconds, () => this.finishVote());
     else this.finishVote();
   }
   ambushEntry(pid) {
@@ -369,14 +369,14 @@ class Room {
   }
   ambushSelect(pid, victim) {
     const a = this.ambushEntry(pid);
-    if (a.locked) throw new GameError('ALREADY_LOCKED', 'ล็อกไปแล้ว');
+    if (a.locked) throw new GameError('ALREADY_LOCKED', 'ยืนยันไปแล้ว เปลี่ยนไม่ได้');
     if (!a.candidates.includes(victim)) throw new GameError('INVALID_VICTIM', 'เลือกได้เฉพาะคนที่โหวตคุณ');
     a.pick = victim; this.changed();
   }
   ambushLock(pid) {
     const a = this.ambushEntry(pid);
-    if (a.locked) throw new GameError('ALREADY_LOCKED', 'ล็อกไปแล้ว');
-    if (!a.pick) throw new GameError('NOTHING_SELECTED', 'เลือกก่อนแล้วค่อยล็อก');
+    if (a.locked) throw new GameError('ALREADY_LOCKED', 'ยืนยันไปแล้ว เปลี่ยนไม่ได้');
+    if (!a.pick) throw new GameError('NOTHING_SELECTED', 'เลือกก่อนแล้วค่อยกดยืนยัน');
     a.locked = true; this.changed();
     this.checkEarly(this.g.vr.ambush.every(x => x.locked));
   }
@@ -386,7 +386,7 @@ class Room {
     for (const a of vr.ambush) {
       if (a.locked) continue;
       a.byTimeout = true; a.locked = true;
-      if (!a.pick && a.candidates.length && this.cfg.ambushTimeoutPick === 'random') {
+      if (!a.pick && a.candidates.length && this.cfg.defenseTimeoutPick === 'random') {
         a.pick = a.candidates[this.randInt(a.candidates.length)];
         this.log('random_ambush_pick', { ambusher: a.ambusher, pick: a.pick });
       }
@@ -455,7 +455,7 @@ class Room {
     if (this.phase !== PH.SD_PICK) throw new GameError('WRONG_PHASE', 'ยังไม่ใช่ช่วงเลือกไพ่');
     const sd = this.g.sd;
     if (pid !== sd.a && pid !== sd.b) throw new GameError('NOT_ELIGIBLE', 'คุณไม่ได้อยู่ในการดวลนี้');
-    if (sd.locked[pid]) throw new GameError('ALREADY_LOCKED', 'ล็อกไปแล้ว');
+    if (sd.locked[pid]) throw new GameError('ALREADY_LOCKED', 'ยืนยันไปแล้ว เปลี่ยนไม่ได้');
     return sd;
   }
   showdownSelect(pid, choice) {
@@ -465,7 +465,7 @@ class Room {
   }
   showdownLock(pid) {
     const sd = this.sdCheck(pid);
-    if (!sd.choice[pid]) throw new GameError('NOTHING_SELECTED', 'เลือกไพ่ก่อนแล้วค่อยล็อก');
+    if (!sd.choice[pid]) throw new GameError('NOTHING_SELECTED', 'เลือกไพ่ก่อนแล้วค่อยกดยืนยัน');
     sd.locked[pid] = true; this.changed();
     this.checkEarly(sd.locked[sd.a] && sd.locked[sd.b]);
   }
@@ -554,7 +554,8 @@ class Room {
   }
   skip(pid) { // R-7-03
     this.requireGm(pid);
-    if (this.phase !== PH.CONSPIRE && this.phase !== PH.SD_TALK) throw new GameError('WRONG_PHASE', 'ข้ามได้เฉพาะช่วงเจรจา');
+    // GM ข้ามได้ทุกช่วงที่มีเวลา ผลเหมือนเวลาหมด (คนที่ยังไม่เลือกถือว่าไม่ได้เลือก, เลือกแล้วยังไม่ยืนยันนับให้)
+    if (this.phase === PH.LOBBY || this.phase === PH.END || !this.timer && !this.paused) throw new GameError('WRONG_PHASE', 'ช่วงนี้ข้ามไม่ได้');
     this.addAudit(pid, 'skip', PHASE_TH[this.phase]);
     this.endPhaseNow();
   }
@@ -652,21 +653,22 @@ class Room {
     s.deckCount = g.deck.length; s.history = g.history;
     if (this.phase === PH.VOTE || this.phase === PH.CONSPIRE) {
       s.eligible = g.eligible;
-      s.locked = g.eligible.filter(id => (g.votes.get(id) || {}).locked); // R-7-13 เห็นแค่ใครล็อก
+      s.locked = g.eligible.filter(id => (g.votes.get(id) || {}).locked); // R-7-13 เห็นแค่ใครยืนยัน
+      s.chosen = g.eligible.filter(id => g.votes.has(id)); // ใครเลือกแล้ว (ไม่บอกว่าเลือกใคร)
       const mv = g.votes.get(pid);
       s.myVote = mv ? { choice: mv.choice, locked: mv.locked } : null;
     }
     if (g.vr && (this.phase === PH.AMBUSH_PICK || this.phase === PH.RESULT)) {
       const vr = g.vr;
       s.vote = { choices: vr.choices, tally: vr.tally, targets: vr.targets, e1: vr.e1, final: vr.final,
-        ambush: vr.ambush.map(a => ({ ambusher: a.ambusher, candidates: a.candidates, locked: a.locked, auto: a.auto,
+        ambush: vr.ambush.map(a => ({ ambusher: a.ambusher, candidates: a.candidates, locked: a.locked, auto: a.auto, chosen: !!a.pick,
           pick: vr.final || a.auto || a.ambusher === pid ? a.pick : null })) };
       if (vr.final) { s.vote.eliminated = vr.eliminated; s.vote.reasons = vr.reasons; s.vote.survivors = vr.survivors; }
     }
     if (this.phase === PH.ROUND_END) s.roundEnd = g.roundEnd;
     if (g.sd && [PH.SD_TALK, PH.SD_PICK, PH.SD_RESULT].includes(this.phase)) {
       const sd = g.sd;
-      s.showdown = { type: sd.type, a: sd.a, b: sd.b, locked: [sd.a, sd.b].filter(x => sd.locked[x]),
+      s.showdown = { type: sd.type, a: sd.a, b: sd.b, locked: [sd.a, sd.b].filter(x => sd.locked[x]), chosen: [sd.a, sd.b].filter(x => sd.choice[x]),
         myChoice: (pid === sd.a || pid === sd.b) ? (sd.choice[pid] || null) : null,
         tiebreak: g.tb ? { count: g.tb.count, max: this.cfg.tiebreakMaxShowdowns } : null,
         potCount: sd.type === 'NORMAL' ? g.pot.length : this.cfg.potSize };
@@ -678,15 +680,15 @@ class Room {
 }
 
 function publicConfig(c) {
-  const keys = ['conspireSecondsFirst', 'conspireSecondsNext', 'voteSeconds', 'ambushPickSeconds', 'showdownTalkSeconds', 'showdownPickSeconds',
+  const keys = ['conspireSecondsFirst', 'conspireSecondsNext', 'voteSeconds', 'defensePickSeconds', 'showdownTalkSeconds', 'showdownPickSeconds',
     'voteResultSeconds', 'roundEndSeconds', 'showdownResultSeconds', 'timerWarnSeconds',
     'minPlayers', 'maxPlayers', 'winPointsByPlayers', 'tiebreakMaxShowdowns',
     'deckCount3', 'deckCount4', 'deckCount5', 'potSize', 'compensationBars', 'chatMaxLength',
-    'zeroSurvivorCompensation', 'hiddenScores', 'showdownTimeoutChoice', 'ambushTimeoutPick'];
+    'zeroSurvivorCompensation', 'hiddenScores', 'showdownTimeoutChoice', 'defenseTimeoutPick'];
   const o = {}; for (const k of keys) o[k] = c[k]; return o;
 }
 
-const PHASE_TH = { LOBBY: 'Lobby', CONSPIRE: 'ช่วงเจรจา', VOTE: 'ช่วงโหวต', AMBUSH_PICK: 'ซุ่มโจมตีเลือกคน', RESULT: 'ผลโหวต',
+const PHASE_TH = { LOBBY: 'Lobby', CONSPIRE: 'ช่วงเจรจา', VOTE: 'ช่วงโหวต', AMBUSH_PICK: 'DEFENSE เลือกคน', RESULT: 'ผลโหวต',
   ROUND_END: 'จบรอบ', SHOWDOWN_TALK: 'เจรจาก่อนดวล', SHOWDOWN_PICK: 'ดวลสุดท้าย', SHOWDOWN_RESULT: 'ผลการดวล', GAME_END: 'จบเกม' };
 const AUDIT_TEXT = { start: 'เริ่มเกม', pause: 'หยุดเกมชั่วคราว', resume: 'เล่นต่อ', skip: 'ข้าม', kick: 'เตะ', play_again: 'เริ่มเกมใหม่',
   gm_handover: 'ได้สิทธิ์ GM', approve_device: 'อนุมัติเปลี่ยนเครื่องของ', deny_device: 'ปฏิเสธเปลี่ยนเครื่องของ' };

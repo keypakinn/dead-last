@@ -2,7 +2,7 @@
 // อ่านและตรวจ config.js (R-3-01 ถึง R-3-04)
 const DEFAULTS = {
   conspireSecondsFirst: [90, 10, 600], conspireSecondsNext: [45, 10, 600],
-  voteSeconds: [30, 10, 300], ambushPickSeconds: [20, 5, 120],
+  voteSeconds: [30, 10, 300], defensePickSeconds: [20, 5, 120],
   showdownTalkSeconds: [60, 0, 600], showdownPickSeconds: [30, 10, 300],
   voteResultSeconds: [8, 3, 60], roundEndSeconds: [8, 3, 60], showdownResultSeconds: [10, 3, 60],
   timerWarnSeconds: [5, 0, 30],
@@ -16,7 +16,7 @@ const CHOICES = {
   zeroSurvivorCompensation: [true, [true, false]],
   hiddenScores: [true, [true, false]],
   showdownTimeoutChoice: ['share', ['share', 'grab', 'random']],
-  ambushTimeoutPick: ['random', ['random', 'none']],
+  defenseTimeoutPick: ['random', ['random', 'none']],
 };
 
 // เกณฑ์แต้มชนะตามจำนวนผู้เล่น (R-5-05) ค่าเริ่มต้น
@@ -63,7 +63,7 @@ function validate(raw, warn = (m) => console.warn('[config] ' + m)) {
     else out[k] = v;
   }
   out.winPointsByPlayers = winTable(raw.winPointsByPlayers, warn);
-  for (const old of ['conspireSeconds', 'resultSeconds', 'winPointsSmall', 'winPointsLarge', 'largeGroupFrom']) {
+  for (const old of ['conspireSeconds', 'resultSeconds', 'winPointsSmall', 'winPointsLarge', 'largeGroupFrom', 'ambushPickSeconds', 'ambushTimeoutPick']) {
     if (raw[old] !== undefined) warn(`${old} ไม่ใช้แล้ว ดูชื่อใหม่ใน config.js`);
   }
   // R-3-03 ค่าที่ขัดกันเอง ใช้ค่าเริ่มต้นทั้งกลุ่ม

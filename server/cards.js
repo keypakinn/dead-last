@@ -54,8 +54,9 @@ function validateRows(rows) {
       if (o.id !== 'gold-' + v) { bad(`id ของทองค่า ${v} ต้องเป็น gold-${v}`); continue; }
       card.value = v;
     }
-    if (['share', 'steal', 'grab'].includes(o.id) && o.template !== 'showdown') { bad(`${o.id} ต้องใช้ template showdown`); continue; }
-    if (o.id === 'ambush' && o.template !== 'ambush') { bad('ambush ต้องใช้ template ambush'); continue; }
+    // การ์ดที่กติกาใช้ต้องใช้ template ชื่อเดียวกับ id (แต่ละใบมีสีกรอบของตัวเอง)
+    if (['defense', 'share', 'steal', 'grab'].includes(o.id) && o.template !== o.id) { bad(`${o.id} ต้องใช้ template ${o.id}`); continue; }
+    if (o.template !== 'unit' && o.template !== 'gold' && o.template !== o.id) { bad(`template ${o.template} ใช้ได้กับการ์ด id ${o.template} เท่านั้น`); continue; }
     for (const [col, def] of Object.entries(SCHEMA.columns)) {
       if (def.max && card[col] && [...card[col]].length > def.max) warnings.push(`data.csv แถว ${line}: ${col} ยาวเกิน ${def.max} ตัวอักษร อาจล้นการ์ด`);
     }

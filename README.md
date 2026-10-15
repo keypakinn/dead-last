@@ -21,18 +21,18 @@ npm start
 
 | กลุ่ม | ค่า |
 |---|---|
-| เวลา (วินาที) | `conspireSecondsFirst` เจรจาครั้งแรกของรอบ, `conspireSecondsNext` เจรจาตอนโหวตซ้ำ, `voteSeconds` โหวต, `ambushPickSeconds` ซุ่มโจมตีเลือกคน, `showdownTalkSeconds` / `showdownPickSeconds` ดวล, `voteResultSeconds` / `roundEndSeconds` / `showdownResultSeconds` แสดงผลแต่ละแบบ, `timerWarnSeconds` นาฬิกากะพริบ, `gmHandoverSeconds` ย้าย GM |
+| เวลา (วินาที) | `conspireSecondsFirst` เจรจาครั้งแรกของรอบ, `conspireSecondsNext` เจรจาตอนโหวตซ้ำ, `voteSeconds` โหวต, `defensePickSeconds` DEFENSE เลือกคนที่จะกำจัด, `showdownTalkSeconds` / `showdownPickSeconds` ดวล, `voteResultSeconds` / `roundEndSeconds` / `showdownResultSeconds` แสดงผลแต่ละแบบ, `timerWarnSeconds` นาฬิกากะพริบ, `gmHandoverSeconds` ย้าย GM |
 | ผู้เล่นและการชนะ | `minPlayers`, `maxPlayers`, `winPointsByPlayers` (แต้มชนะแยกตามจำนวนคน เช่น `3: 20`), `tiebreakMaxShowdowns` |
 | ทอง | `deckCount3/4/5` จำนวนแท่งแต่ละค่า, `potSize` ทองกลางวงต่อรอบ, `compensationBars` ทองปลอบใจ |
 | แชท | `chatMaxLength`, `chatMinIntervalMs`, `chatHistory` |
-| ตัวเลือกกฎ | `zeroSurvivorCompensation`, `hiddenScores`, `showdownTimeoutChoice`, `ambushTimeoutPick` |
+| ตัวเลือกกฎ | `zeroSurvivorCompensation`, `hiddenScores`, `showdownTimeoutChoice`, `defenseTimeoutPick` |
 
 ค่าที่ผิดชนิดหรือเกินช่วง เซิร์ฟเวอร์ใช้ค่าเริ่มต้นแทนและเขียนคำเตือนใน Logs ของ Render ตัวเลขในหน้ากติกาเปลี่ยนตามอัตโนมัติ
 
 ## การ์ดและภาพ (`cards/`)
 
 - ข้อความบนการ์ดอยู่ที่ `cards/data.csv` ตำแหน่งอยู่ที่ `cards/template-*.json` กรอบคือ `cards/frame-*.png`
-- ภาพในการ์ดอยู่ที่ `cards/art/` 6 ภาพ: `unit`, `ambush`, `share`, `steal`, `grab`, `gold` นามสกุล `.webp`, `.png` หรือ `.jpg` (ตัวพิมพ์เล็ก) ถ้ามีชื่อเดียวกันหลายนามสกุล เกมใช้ `.webp` ก่อน
+- ภาพในการ์ดอยู่ที่ `cards/art/` 6 ภาพ: `unit`, `defense`, `share`, `steal`, `grab`, `gold` นามสกุล `.webp`, `.png` หรือ `.jpg` (ตัวพิมพ์เล็ก) ถ้ามีชื่อเดียวกันหลายนามสกุล เกมใช้ `.webp` ก่อน
 - รายละเอียดคอลัมน์ ขนาดภาพ และ prompt สร้างภาพ ดู `cards/README.md`
 - หลังแก้การ์ด เปิด `/preview` ดูว่าครบ ไม่มีกรอบแดง (ข้อความล้น) และภาพขึ้น
 

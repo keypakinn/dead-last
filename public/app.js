@@ -14,9 +14,9 @@
     form: { name: '', code: (params.get('room') || '').toUpperCase().slice(0, 4) },
   };
 
-  const PHASE_TH = { LOBBY: 'Lobby', CONSPIRE: 'เจรจา', VOTE: 'โหวต', AMBUSH_PICK: 'ซุ่มโจมตี!', RESULT: 'ผลโหวต',
+  const PHASE_TH = { LOBBY: 'Lobby', CONSPIRE: 'เจรจา', VOTE: 'โหวต', AMBUSH_PICK: 'DEFENSE!', RESULT: 'ผลโหวต',
     ROUND_END: 'จบรอบ', SHOWDOWN_TALK: 'เจรจาก่อนดวล', SHOWDOWN_PICK: 'ดวลสุดท้าย', SHOWDOWN_RESULT: 'ผลการดวล', GAME_END: 'จบเกม' };
-  const REASON = { target: 'ได้โหวตมากที่สุด', ambushed: 'โดนซุ่มโจมตี', ambush_miss: 'ซุ่มพลาด (ไม่ได้เป็นเป้าหมาย)', no_vote: 'ไม่ได้โหวต', wrong_vote: 'โหวตคนที่ไม่ใช่เป้าหมาย' };
+  const REASON = { target: 'ได้โหวตมากที่สุด', ambushed: 'โดน DEFENSE สวนกลับ', ambush_miss: 'ใช้ DEFENSE แต่ไม่ได้เป็นเป้าหมาย', no_vote: 'ไม่ได้โหวต', wrong_vote: 'โหวตคนที่ไม่ใช่เป้าหมาย' };
   const SD_ID = { SHARE: 'share', STEAL: 'steal', GRAB: 'grab' };
   const SD_NAME = { SHARE: 'SHARE', STEAL: 'STEAL', GRAB: 'GRAB ONE & GO' };
 
@@ -142,7 +142,7 @@ ${isGm() ? `<button class="btn block gold" data-act="start" ${canStart ? '' : 'd
     if (isGm() && ph !== 'GAME_END') {
       if (st.paused) tools.push('<button class="btn sm gold" data-act="resume">▶ เล่นต่อ</button>');
       else if (st.endsAt) tools.push('<button class="btn sm" data-act="pause">⏸ หยุด</button>');
-      if (ph === 'CONSPIRE' || ph === 'SHOWDOWN_TALK') tools.push('<button class="btn sm" data-act="skip">⏭ ข้ามช่วงเจรจา</button>');
+      if (st.endsAt || st.paused) tools.push('<button class="btn sm" data-act="skip">⏭ ข้าม</button>');
     }
     const reqs = (st.requests || []).map((r) => `<div class="notice row"><span class="grow">${esc(r.name)} ขอเข้าเล่นจากเครื่องใหม่</span>
       <button class="btn sm gold" data-act="approve" data-id="${esc(r.reqId)}">อนุมัติ</button><button class="btn sm" data-act="deny" data-id="${esc(r.reqId)}">ไม่</button></div>`).join('');
@@ -155,11 +155,28 @@ ${isGm() ? `<button class="btn block gold" data-act="start" ${canStart ? '' : 'd
 ${tools.length ? `<div class="hud-tools">${tools.join('')}</div>` : ''}${reqs}`;
   }
 
-  function chips(opts) {
-    const st = S.st, locked = new Set(st.locked || []);
-    return `<div class="players">${st.players.map((p) => `<span class="chip ${p.status === 'out' ? 'out' : ''} ${p.connected ? '' : 'off'}">${dot(p.id)}
-      ${esc(p.name)}${p.gm ? '<span class="tag">GM</span>' : ''}<span class="bars">${p.barCount}▮</span>${opts && opts.locks && locked.has(p.id) ? '<span class="ok">✔</span>' : ''}</span>`).join('')}</div>`;
+  // สถานะการเลือกของแต่ละคน (ไม่บอกว่าเลือกอะไร): 'done' ยืนยันแล้ว, 'chosen' เลือกแล้วยังไม่ยืนยัน, 'wait' ยังไม่เลือก
+  function pickStatus() {
+    const st = S.st, m = {};
+    if (st.phase === 'VOTE') {
+      const lk = new Set(st.locked || []), ch = new Set(st.chosen || []);
+      for (const id of st.eligible || []) m[id] = lk.has(id) ? 'done' : ch.has(id) ? 'chosen' : 'wait';
+    } else if (st.phase === 'AMBUSH_PICK' && st.vote) {
+      for (const a of st.vote.ambush) if (!a.auto) m[a.ambusher] = a.locked ? 'done' : a.chosen ? 'chosen' : 'wait';
+    } else if (st.phase === 'SHOWDOWN_PICK' && st.showdown) {
+      const sd = st.showdown;
+      for (const id of [sd.a, sd.b]) m[id] = sd.locked.includes(id) ? 'done' : sd.chosen.includes(id) ? 'chosen' : 'wait';
+    }
+    return m;
   }
+  const STATUS_MARK = { done: '<span class="ok" title="ยืนยันแล้ว">✔</span>', chosen: '<span class="chosen" title="เลือกแล้ว ยังไม่ยืนยัน">●</span>', wait: '<span class="muted" title="ยังไม่เลือก">…</span>' };
+  function chips() {
+    const st = S.st, ps = pickStatus(), any = Object.keys(ps).length;
+    return `<div class="players">${st.players.map((p) => `<span class="chip ${p.status === 'out' ? 'out' : ''} ${p.connected ? '' : 'off'}">${dot(p.id)}
+      ${esc(p.name)}${p.gm ? '<span class="tag">GM</span>' : ''}<span class="bars">${p.barCount}▮</span>${ps[p.id] ? STATUS_MARK[ps[p.id]] : ''}</span>`).join('')}</div>
+${any ? '<p class="legend small muted"><span class="ok">✔</span> ยืนยันแล้ว · <span class="chosen">●</span> เลือกแล้ว ยังไม่ยืนยัน · … ยังไม่เลือก</p>' : ''}`;
+  }
+  const UNCONFIRMED = '<p class="hint small">ยังไม่กดยืนยัน — ถ้าหมดเวลา ระบบจะใช้ใบที่เลือกไว้</p>';
 
   function myHand() {
     const me = P(meId());
@@ -175,7 +192,7 @@ ${tools.length ? `<div class="hud-tools">${tools.join('')}</div>` : ''}${reqs}`;
     const tg = new Set(vr.targets);
     return `<table class="res">${ids.map((id) => {
       const c = vr.choices[id];
-      const what = c === 'AMBUSH' ? '<b class="danger">ซุ่มโจมตี!</b>' : c === 'NONE' ? '<span class="muted">ไม่ได้โหวต</span>' : `→ ${dot(c)}${esc(pname(c))}`;
+      const what = c === 'AMBUSH' ? '<b class="defense">DEFENSE</b>' : c === 'NONE' ? '<span class="muted">ไม่ได้โหวต</span>' : `→ ${dot(c)}${esc(pname(c))}`;
       const fate = vr.final ? (out.has(id) ? `<div class="why">ตกรอบ: ${esc(REASON[vr.reasons[id]] || '')}</div>` : '<div class="surv">รอด</div>') : '';
       return `<tr class="${out.has(id) ? 'out' : ''}"><td>${dot(id)}${esc(pname(id))}${tg.has(id) ? '<span class="badge-t">เป้าหมาย</span>' : ''}${fate}</td>
         <td>${what}</td><td class="goldtxt" style="text-align:right">${vr.tally[id] || 0} โหวต</td></tr>`;
@@ -192,20 +209,25 @@ ${tools.length ? `<div class="hud-tools">${tools.join('')}</div>` : ''}${reqs}`;
 
   function bodyVote() {
     const st = S.st, me = meId(), elig = st.eligible || [];
-    if (!elig.includes(me)) return `<div class="panel"><p class="big">กำลังโหวต</p><p class="muted">ล็อกแล้ว ${(st.locked || []).length} / ${elig.length} คน</p></div>`;
+    const done = `ยืนยันแล้ว ${(st.locked || []).length} / ${elig.length} คน`;
+    if (!elig.includes(me)) return `<div class="panel"><p class="big">กำลังโหวต</p><p class="muted">${done}</p></div>`;
     const mv = st.myVote;
-    if (mv && mv.locked) return `<div class="panel center stack"><p class="big">ล็อกแล้ว ✔</p><p>คุณเลือก ${mv.choice === 'AMBUSH' ? '<b class="danger">ซุ่มโจมตี!</b>' : esc(pname(mv.choice))}</p>
-<p class="muted">รอคนอื่น ${(st.locked || []).length} / ${elig.length}</p></div>`;
+    const label = (c) => (c === 'AMBUSH' ? '<b class="defense">DEFENSE</b>' : esc(pname(c)));
+    if (mv && mv.locked) return `<div class="panel center stack"><p class="big">ยืนยันแล้ว ✔</p><p>คุณเลือก ${label(mv.choice)}</p>
+<p class="muted">รอคนอื่น · ${done}</p></div>`;
     const sel = mv ? mv.choice : null;
     const others = elig.filter((id) => id !== me);
+    // DEFENSE อยู่แถวบนสุดแยกต่างหาก การ์ดตัวละครเรียงด้านล่าง
     return `<p class="muted center small">แตะการ์ดเพื่อดูเต็มใบ แล้วกด "เลือกใบนี้"</p>
+<div class="grid3 defense-row"><button class="pick ${sel === 'AMBUSH' ? 'sel' : ''}" data-act="view" data-kind="vote" data-id="AMBUSH">${slot('defense')}<div class="cap">DEFENSE</div>${sel === 'AMBUSH' ? '<span class="mark">เลือก</span>' : ''}</button></div>
+<p class="divider small muted">หรือโหวตกำจัด</p>
 <div class="grid3">${others.map((id) => { const p = P(id); return `<button class="pick ${sel === id ? 'sel' : ''}" data-act="view" data-kind="vote" data-id="${esc(id)}">
   ${slot(p.unitId, { pn: p.name })}<div class="cap">${esc(p.name)}</div>${sel === id ? '<span class="mark">เลือก</span>' : ''}</button>`; }).join('')}
-  <button class="pick ${sel === 'AMBUSH' ? 'sel' : ''}" data-act="view" data-kind="vote" data-id="AMBUSH">${slot('ambush')}<div class="cap">ซุ่มโจมตี!</div>${sel === 'AMBUSH' ? '<span class="mark">เลือก</span>' : ''}</button>
 </div>
-<div class="stack foot"><p class="center">${sel ? `เลือก: <b>${sel === 'AMBUSH' ? 'ซุ่มโจมตี!' : esc(pname(sel))}</b>` : '<span class="muted">ยังไม่ได้เลือก</span>'}</p>
-<button class="btn block gold" data-act="vote-lock" ${sel ? '' : 'disabled'}>🔒 ล็อก</button>
-<p class="muted small center">ล็อกแล้ว ${(st.locked || []).length} / ${elig.length} คน</p></div>`;
+<div class="stack foot"><p class="center">${sel ? `เลือก: ${label(sel)}` : '<span class="muted">ยังไม่ได้เลือก</span>'}</p>
+<button class="btn block gold" data-act="vote-lock" ${sel ? '' : 'disabled'}>✅ ยืนยัน</button>
+${sel ? UNCONFIRMED : ''}
+<p class="muted small center">${done}</p></div>`;
   }
 
   function bodyAmbush() {
@@ -213,20 +235,20 @@ ${tools.length ? `<div class="hud-tools">${tools.join('')}</div>` : ''}${reqs}`;
     const mine = vr.ambush.find((a) => a.ambusher === me && !a.auto && a.candidates.length > 1);
     let top = '';
     if (mine && !mine.locked) {
-      top = `<div class="panel stack"><p class="big danger">ซุ่มโจมตีสำเร็จ! เลือกกำจัด 1 คน</p>
+      top = `<div class="panel stack"><p class="big defense">DEFENSE สำเร็จ! เลือกกำจัดคนที่โหวตคุณ 1 คน</p>
 <div class="grid3">${mine.candidates.map((id) => { const p = P(id); return `<button class="pick ${mine.pick === id ? 'sel' : ''}" data-act="view" data-kind="ambush" data-id="${esc(id)}">
   ${slot(p.unitId, { pn: p.name })}<div class="cap">${esc(p.name)}</div></button>`; }).join('')}</div>
-<button class="btn block gold" data-act="ambush-lock" ${mine.pick ? '' : 'disabled'}>🔒 ยืนยันกำจัด ${mine.pick ? esc(pname(mine.pick)) : ''}</button></div>`;
+<button class="btn block gold" data-act="ambush-lock" ${mine.pick ? '' : 'disabled'}>✅ ยืนยันกำจัด ${mine.pick ? esc(pname(mine.pick)) : ''}</button>${mine.pick ? UNCONFIRMED : ''}</div>`;
     } else {
       const waiting = vr.ambush.filter((a) => !a.locked).map((a) => esc(pname(a.ambusher)));
-      top = `<div class="notice">${waiting.length ? `รอ ${waiting.join(', ')} เลือกคนที่จะกำจัด` : 'เลือกครบแล้ว'}</div>`;
+      top = `<div class="notice">${waiting.length ? `รอ ${waiting.join(', ')} (DEFENSE) เลือกคนที่จะกำจัด` : 'เลือกครบแล้ว'}</div>`;
     }
     return top + `<div class="panel foot">${voteTable(vr)}</div>`;
   }
 
   function bodyResult() {
     const vr = S.st.vote;
-    const picks = vr.ambush.filter((a) => a.pick).map((a) => `<div class="notice">${dot(a.ambusher)}${esc(pname(a.ambusher))} ซุ่มโจมตีกำจัด ${dot(a.pick)}${esc(pname(a.pick))}</div>`).join('');
+    const picks = vr.ambush.filter((a) => a.pick).map((a) => `<div class="notice">${dot(a.ambusher)}${esc(pname(a.ambusher))} ใช้ DEFENSE สวนกลับ กำจัด ${dot(a.pick)}${esc(pname(a.pick))}</div>`).join('');
     const s = (vr.survivors || []).length;
     const next = s >= 3 ? `เหลือ ${s} คน โหวตต่อ` : s === 2 ? 'เหลือ 2 คน ไปดวลสุดท้าย!' : s === 1 ? 'เหลือคนเดียว ได้ทองกลางวงทั้งหมด!' : 'ไม่มีใครรอดเลย';
     return `${picks}<div class="panel">${voteTable(vr)}</div><p class="center big goldtxt">${next}</p>`;
@@ -245,9 +267,9 @@ ${re.items.length ? `<p class="muted">ทองปลอบใจ:</p><ul class=
   function duelHead() {
     const sd = S.st.showdown, pa = P(sd.a), pb = P(sd.b);
     const tb = sd.type === 'TIEBREAK' && sd.tiebreak ? `<div class="notice center">ดวลตัดสินผู้ชนะ ครั้งที่ ${sd.tiebreak.count} / ${sd.tiebreak.max} (ไม่มีทองปลอบใจ)</div>` : '';
-    const lk = new Set(sd.locked);
+    const ps = pickStatus(), TXT = { done: 'ยืนยันแล้ว ✔', chosen: 'เลือกแล้ว ยังไม่ยืนยัน', wait: 'กำลังเลือก…' }, CLS = { done: 'alive', chosen: 'chosen', wait: 'muted' };
     const side = (p) => `<div><div class="card">${slot(p.unitId, { pn: p.name })}</div><div class="who">${esc(p.name)}</div>
-      ${S.st.phase === 'SHOWDOWN_PICK' ? `<div class="small ${lk.has(p.id) ? 'alive' : 'muted'}">${lk.has(p.id) ? 'ล็อกแล้ว ✔' : 'กำลังเลือก…'}</div>` : ''}</div>`;
+      ${ps[p.id] ? `<div class="small ${CLS[ps[p.id]]}">${TXT[ps[p.id]]}</div>` : ''}</div>`;
     return `${tb}<div class="panel"><div class="duel">${side(pa)}<div class="vs">VS</div>${side(pb)}</div>
 ${S.st.phase === 'SHOWDOWN_RESULT' ? '' : `<p class="center">เดิมพัน <b class="goldtxt">${sd.potCount} แท่ง</b></p>`}</div>`;
   }
@@ -260,12 +282,12 @@ ${S.st.phase === 'SHOWDOWN_RESULT' ? '' : `<p class="center">เดิมพั�
       body = `<div class="panel stack center"><p>${duelist ? 'คุยกับคู่ดวลในแชทได้ แล้วจะเข้าช่วงเลือกไพ่' : 'ดูและแชทเชียร์ได้'}</p><button class="btn block" data-act="open-chat">💬 เปิดแชท</button></div>`;
     } else if (st.phase === 'SHOWDOWN_PICK') {
       if (!duelist) body = '<p class="center muted">รอทั้งสองคนเลือกไพ่…</p>';
-      else if (sd.locked.includes(me)) body = `<div class="panel center"><p class="big">ล็อกแล้ว ✔</p><p>คุณเลือก <b>${esc(SD_NAME[sd.myChoice] || '')}</b> รออีกฝ่าย…</p></div>`;
+      else if (sd.locked.includes(me)) body = `<div class="panel center"><p class="big">ยืนยันแล้ว ✔</p><p>คุณเลือก <b>${esc(SD_NAME[sd.myChoice] || '')}</b> รออีกฝ่าย…</p></div>`;
       else {
         const sel = sd.myChoice;
         body = `<p class="muted center small">แตะการ์ดเพื่อดูเต็มใบ แล้วกด "เลือกใบนี้"</p><div class="grid3">${['SHARE', 'STEAL', 'GRAB'].map((ch) => `<button class="pick ${sel === ch ? 'sel' : ''}" data-act="view" data-kind="sd" data-id="${ch}">
   ${slot(SD_ID[ch])}<div class="cap">${SD_NAME[ch]}</div>${sel === ch ? '<span class="mark">เลือก</span>' : ''}</button>`).join('')}</div>
-<button class="btn block gold foot" data-act="sd-lock" ${sel ? '' : 'disabled'}>🔒 ล็อก${sel ? ' ' + SD_NAME[sel] : ''}</button>`;
+<button class="btn block gold foot" data-act="sd-lock" ${sel ? '' : 'disabled'}>✅ ยืนยัน${sel ? ' ' + SD_NAME[sel] : ''}</button>${sel ? UNCONFIRMED : ''}`;
       }
     } else if (sd.result) {
       const r = sd.result;
@@ -301,7 +323,7 @@ ${isGm() ? '<button class="btn block gold" data-act="again">เล่นอี�
     else if (ph.startsWith('SHOWDOWN')) body = S.st.showdown ? bodyShowdown() : '';
     else if (ph === 'GAME_END') body = bodyEnd();
     const lastAudit = (S.st.audit || []).slice(-1)[0];
-    return hud() + chips({ locks: ph === 'VOTE' }) + body + (ph !== 'GAME_END' ? myHand() : '') +
+    return hud() + chips() + body + (ph !== 'GAME_END' ? myHand() : '') +
       (lastAudit ? `<p class="muted small center">GM ล่าสุด: ${esc(lastAudit.actor)} ${esc(auditText(lastAudit))}</p>` : '');
   }
   const AUD = { start: 'เริ่มเกม', pause: 'หยุดเกมชั่วคราว', resume: 'เล่นต่อ', skip: 'ข้าม', kick: 'เตะ', play_again: 'เริ่มเกมใหม่',
@@ -329,6 +351,16 @@ ${isGm() ? '<button class="btn block gold" data-act="again">เล่นอี�
     else if (m.kind === 'help') html = `<div class="box"><div class="close-row"><button class="icon" data-act="close">✕</button></div>
       <h2 class="goldtxt">${esc(PHASE_TH[m.phase] || '')}</h2><p>${RULES.help(m.phase, cfg())}</p>
       <div class="row foot"><button class="btn grow" data-act="rules">📖 กติกาทั้งหมด</button><button class="btn gold grow" data-act="close">เข้าใจแล้ว</button></div></div>`;
+    else if (m.kind === 'skip') {
+      const c = cfg();
+      const waitTxt = m.phase === 'VOTE' ? 'จะตกรอบเพราะไม่ได้โหวต'
+        : m.phase === 'SHOWDOWN_PICK' ? `ระบบจะเลือก ${esc(String(c.showdownTimeoutChoice || 'share').toUpperCase())} ให้`
+        : c.defenseTimeoutPick === 'random' ? 'ระบบจะสุ่มคนที่ถูกกำจัดให้' : 'จะไม่มีใครถูกกำจัดเพิ่ม';
+      html = `<div class="box"><h2 class="goldtxt">ข้ามเลยไหม?</h2>
+        ${m.wait ? `<p>ยังมี <b>${m.wait} คน</b> ที่ยังไม่ได้เลือก — ${waitTxt}</p>` : ''}
+        ${m.chosen ? `<p><b>${m.chosen} คน</b> เลือกแล้วแต่ยังไม่ยืนยัน — ระบบจะใช้ใบที่เลือกไว้</p>` : ''}
+        <div class="row foot"><button class="btn grow" data-act="close">รอก่อน</button><button class="btn danger grow" data-act="skip-now">ข้ามเลย</button></div></div>`;
+    }
     else if (m.kind === 'card') html = `<div class="box cardbox">${slot(m.cid, { pn: m.pn, mode: 'full' })}
       <div class="row"><button class="btn grow" data-act="close">กลับ</button>${m.label ? `<button class="btn gold grow" data-act="${m.act}" data-id="${esc(m.id)}">${esc(m.label)}</button>` : ''}</div></div>`;
     el.innerHTML = html; el.classList.remove('hidden');
@@ -336,7 +368,7 @@ ${isGm() ? '<button class="btn block gold" data-act="again">เล่นอี�
   }
   function openCard(kind, id) {
     if (kind === 'vote') {
-      if (id === 'AMBUSH') S.modal = { kind: 'card', cid: 'ambush', act: 'vote-select', id, label: 'เลือกใบนี้' };
+      if (id === 'AMBUSH') S.modal = { kind: 'card', cid: 'defense', act: 'vote-select', id, label: 'เลือกใบนี้' };
       else { const p = P(id); S.modal = { kind: 'card', cid: p.unitId, pn: p.name, act: 'vote-select', id, label: `โหวต ${p.name}` }; }
     } else if (kind === 'ambush') { const p = P(id); S.modal = { kind: 'card', cid: p.unitId, pn: p.name, act: 'ambush-select', id, label: `กำจัด ${p.name}` }; }
     else if (kind === 'sd') S.modal = { kind: 'card', cid: SD_ID[id], act: 'sd-select', id, label: 'เลือกใบนี้' };
@@ -354,7 +386,13 @@ ${isGm() ? '<button class="btn block gold" data-act="again">เล่นอี�
     const s = Math.ceil(ms / 1000);
     el.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
     const warnAt = Number(cfg().timerWarnSeconds); // config.js: timerWarnSeconds
-    el.className = 'led' + (warnAt > 0 && s <= warnAt ? ' low' : '');
+    const low = warnAt > 0 && s <= warnAt;
+    el.className = 'led' + (low ? ' low' : '');
+    // สั่นครั้งเดียวต่อช่วง เมื่อเริ่มกะพริบและเรายังต้องเลือก/ยืนยันอยู่ (Android; iPhone ไม่รองรับ)
+    if (low && s > 0 && S.buzzed !== st.endsAt && pickStatus()[meId()] && pickStatus()[meId()] !== 'done') {
+      S.buzzed = st.endsAt;
+      try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) { /* ignore */ }
+    }
   }
   setInterval(tickTimer, 250);
 
@@ -425,7 +463,15 @@ ${isGm() ? '<button class="btn block gold" data-act="again">เล่นอี�
     'ambush-lock'() { act('ambush:lock'); },
     async 'sd-select'(el) { S.modal = null; renderModal(); await act('showdown:select', { choice: el.dataset.id }); },
     'sd-lock'() { act('showdown:lock'); },
-    pause() { act('gm:pause'); }, resume() { act('gm:resume'); }, skip() { act('gm:skip'); },
+    pause() { act('gm:pause'); }, resume() { act('gm:resume'); },
+    // ข้ามช่วงที่ต้องเลือก: ถาม GM ก่อนถ้ายังมีคนไม่ได้เลือก หรือเลือกแล้วยังไม่ยืนยัน
+    skip() {
+      const ps = Object.values(pickStatus());
+      const wait = ps.filter((x) => x === 'wait').length, chosen = ps.filter((x) => x === 'chosen').length;
+      if (!wait && !chosen) return act('gm:skip');
+      S.modal = { kind: 'skip', wait, chosen, phase: S.st.phase }; renderModal();
+    },
+    'skip-now'() { S.modal = null; renderModal(); act('gm:skip'); },
     approve(el) { act('gm:takeover', { reqId: el.dataset.id, approve: true }); },
     deny(el) { act('gm:takeover', { reqId: el.dataset.id, approve: false }); },
     again() { act('game:playAgain'); },

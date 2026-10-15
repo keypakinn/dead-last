@@ -1,5 +1,5 @@
 {
-  "templateVersion": 1,
+  "templateVersion": 2,
   "kind": "gold",
   "base": {
     "w": 600,
@@ -18,7 +18,7 @@
   },
   "fallback": {
     "bg": "#3A3320",
-    "color": "#F2C230",
+    "color": "#FFD23F",
     "column": "name"
   },
   "thumb": {
@@ -42,7 +42,29 @@
         "size": 56,
         "min": 28
       },
-      "color": "#F2C230",
+      "color": "#FFD23F",
+      "glow": true,
+      "letterSpacing": 3,
+      "align": "center",
+      "valign": "middle",
+      "fit": "shrink"
+    },
+    {
+      "id": "value",
+      "type": "number",
+      "column": "value",
+      "x": 180,
+      "y": 626,
+      "w": 240,
+      "h": 150,
+      "font": {
+        "family": "Chakra Petch",
+        "weight": 700,
+        "size": 120,
+        "min": 60,
+        "lineHeight": 1
+      },
+      "color": "#FFD23F",
       "align": "center",
       "valign": "middle",
       "fit": "shrink"
@@ -61,26 +83,7 @@
         "size": 26,
         "min": 26
       },
-      "color": "#4CAF50",
-      "align": "center",
-      "valign": "middle",
-      "fit": "shrink"
-    },
-    {
-      "id": "value",
-      "type": "number",
-      "column": "value",
-      "x": 180,
-      "y": 626,
-      "w": 240,
-      "h": 150,
-      "font": {
-        "family": "Chakra Petch",
-        "weight": 700,
-        "size": 120,
-        "min": 60
-      },
-      "color": "#F2C230",
+      "color": "#FFD23F",
       "align": "center",
       "valign": "middle",
       "fit": "shrink"

@@ -136,8 +136,8 @@ test('T-06 Ambush หมดเวลาเลือก → สุ่ม 1 คน
   assert.ok(t.room.events.some(e => e.type === 'random_ambush_pick'));
   assert.strictEqual(t.room.alive().length, 4);
 });
-test('T-07 Ambush หมดเวลา ambushTimeoutPick = none → ไม่กำจัดใคร', () => {
-  const t = mk(5, { ambushTimeoutPick: 'none' }, { names: ['A', 'B', 'C', 'D', 'E'] });
+test('T-07 Ambush หมดเวลา defenseTimeoutPick = none → ไม่กำจัดใคร', () => {
+  const t = mk(5, { defenseTimeoutPick: 'none' }, { names: ['A', 'B', 'C', 'D', 'E'] });
   vote(t, { A: 'AMBUSH', B: 'A', C: 'A', D: 'A', E: 'A' });
   t.room.endPhaseNow();
   assert.strictEqual(t.room.alive().length, 5);
@@ -523,6 +523,53 @@ test('เล่นใหม่: ล้างทองและแชท ผู�
   assert.strictEqual(t.room.points(t.id.P1), 0);
 });
 
+test('GM ข้ามช่วงโหวตได้ทันที: เลือกแล้วไม่ยืนยันนับให้, ไม่เลือกตกรอบ (รอบ 2 ข้อ 1, 3)', () => {
+  const t = mk(4); toVote(t.room);
+  t.room.voteSelect(t.id.P2, t.id.P1); // เลือกแต่ไม่ยืนยัน
+  t.room.voteSelect(t.id.P3, t.id.P1); t.room.voteLock(t.id.P3);
+  t.room.voteSelect(t.id.P4, t.id.P1); t.room.voteLock(t.id.P4);
+  t.room.action(t.id.P1, { type: 'gm:skip' }); // P1 ยังไม่เลือก
+  assert.strictEqual(t.room.phase, PH.RESULT);
+  assert.strictEqual(t.room.g.vr.tally[t.id.P1], 3, 'โหวตของ P2 ที่ไม่ได้ยืนยันถูกนับ');
+  assert.strictEqual(t.room.g.vr.reasons[t.id.P1], 'target');
+  assert.ok(t.room.audit.some(a => a.action === 'skip' && a.detail === 'ช่วงโหวต'));
+  t.room.action(t.id.P1, { type: 'gm:skip' }); // ข้ามหน้าผลโหวตได้ด้วย
+  assert.notStrictEqual(t.room.phase, PH.RESULT);
+});
+test('GM ข้ามช่วงเลือก DEFENSE และช่วงดวลได้ / ข้ามใน Lobby และจบเกมไม่ได้', () => {
+  const t = mk(5, {}, { names: ['A', 'B', 'C', 'D', 'E'] });
+  vote(t, { A: 'AMBUSH', B: 'A', C: 'A', D: 'A', E: 'A' });
+  assert.strictEqual(t.room.phase, PH.AMBUSH_PICK);
+  t.room.ambushSelect(t.id.A, t.id.C); // เลือกแล้วไม่ยืนยัน
+  t.room.skip(t.id.A);
+  assert.deepStrictEqual(outNames(t), ['C']);
+  const d = toShowdown6();
+  d.room.showdownSelect(d.id.P2, 'STEAL');
+  d.room.skip(d.id.P1);
+  assert.strictEqual(d.room.g.sd.result.choiceA, 'STEAL');
+  assert.deepStrictEqual(d.room.g.sd.result.byTimeout, [d.id.P4]);
+  const l = mk(3, {}, { start: false });
+  assert.throws(() => l.room.skip(l.id.P1), e => e.code === 'WRONG_PHASE');
+  const e = mk(3); giveTo(e.room, e.id.P1, 30); e.room.winCheck();
+  assert.throws(() => e.room.skip(e.id.P1), e2 => e2.code === 'WRONG_PHASE');
+});
+test('state บอกใคร "เลือกแล้ว" แต่ไม่บอกว่าเลือกอะไร (โหวต / DEFENSE / ดวล)', () => {
+  const t = mk(4); toVote(t.room);
+  t.room.voteSelect(t.id.P1, t.id.P3);
+  const s = t.room.getState(t.id.P2);
+  assert.deepStrictEqual(s.chosen, [t.id.P1]); assert.deepStrictEqual(s.locked, []);
+  assert.strictEqual(s.myVote, null);
+  const a = mk(5, {}, { names: ['A', 'B', 'C', 'D', 'E'] });
+  vote(a, { A: 'AMBUSH', B: 'A', C: 'A', D: 'A', E: 'A' });
+  a.room.ambushSelect(a.id.A, a.id.C);
+  const sb = a.room.getState(a.id.B).vote.ambush[0];
+  assert.strictEqual(sb.chosen, true); assert.strictEqual(sb.pick, null);
+  const d = toShowdown6(); d.room.showdownSelect(d.id.P2, 'GRAB');
+  const s1 = d.room.getState(d.id.P1);
+  assert.deepStrictEqual(s1.showdown.chosen, [d.id.P2]);
+  assert.ok(!JSON.stringify(s1).includes('GRAB'));
+});
+
 console.log('config');
 test('T-25 voteSeconds = 5 → ใช้ 30 และมีคำเตือน (R-3-02)', () => {
   const w = []; const c = validate({ voteSeconds: 5, hiddenScores: 'yes' }, m => w.push(m));
@@ -606,6 +653,15 @@ test('T-32 CSV มี BOM, CRLF, id ซ้ำ, สีผิด, value = 7, แ�
   assert.ok(v.errors.some(e => e.includes('แถว 4')));
   assert.ok(v.errors.some(e => e.includes('แถว 5') && e.includes('value')));
   assert.ok(v.errors.some(e => e.includes('แถว 7') && e.includes('color')));
+});
+test('การ์ด DEFENSE: id defense ต้องใช้ template defense, ไพ่ดวลต้องใช้ template ชื่อเดียวกับ id', () => {
+  assert.strictEqual(CARDS.byId.defense.name, 'DEFENSE');
+  assert.strictEqual(CARDS.byId.defense.template, 'defense');
+  assert.strictEqual(CARDS.byId.ambush, undefined);
+  const head = 'id,template,name,kind_label\n';
+  const v = validateRows(parseCSV(head + 'defense,steal,X,Y\nsteal,steal,STEAL,Y\ngrab,share,G,Y\nshare,unit,S,Y\n'));
+  assert.deepStrictEqual(v.cards.map(c => c.id), ['steal']);
+  assert.strictEqual(v.errors.length, 3);
 });
 test('T-33 ไม่มีการ์ด grab → เริ่มเกมไม่ได้ CARDS_MISSING พร้อม id (R-4.1-03)', () => {
   const cards = { ...CARDS, missing: ['grab'] };

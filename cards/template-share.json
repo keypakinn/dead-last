@@ -1,0 +1,92 @@
+{
+  "templateVersion": 2,
+  "kind": "share",
+  "base": {
+    "w": 600,
+    "h": 900
+  },
+  "fonts": [
+    "https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&display=swap"
+  ],
+  "frame": "frame-share.png",
+  "art": {
+    "x": 90,
+    "y": 170,
+    "w": 420,
+    "h": 420,
+    "radius": 210
+  },
+  "fallback": {
+    "bg": "#1E3324",
+    "color": "#43C463",
+    "column": "name"
+  },
+  "thumb": {
+    "hide": [
+      "kind",
+      "effect"
+    ]
+  },
+  "slots": [
+    {
+      "id": "name",
+      "type": "text",
+      "column": "name",
+      "x": 50,
+      "y": 40,
+      "w": 500,
+      "h": 100,
+      "font": {
+        "family": "Chakra Petch",
+        "weight": 700,
+        "size": 60,
+        "min": 28
+      },
+      "color": "#43C463",
+      "glow": true,
+      "letterSpacing": 4,
+      "align": "center",
+      "valign": "middle",
+      "fit": "shrink"
+    },
+    {
+      "id": "kind",
+      "type": "text",
+      "column": "kind_label",
+      "x": 60,
+      "y": 618,
+      "w": 480,
+      "h": 40,
+      "font": {
+        "family": "Chakra Petch",
+        "weight": 500,
+        "size": 26,
+        "min": 26
+      },
+      "color": "#43C463",
+      "align": "left",
+      "valign": "middle",
+      "fit": "shrink"
+    },
+    {
+      "id": "effect",
+      "type": "text",
+      "column": "effect",
+      "x": 60,
+      "y": 674,
+      "w": 480,
+      "h": 186,
+      "font": {
+        "family": "Chakra Petch",
+        "weight": 500,
+        "size": 27,
+        "min": 26,
+        "lineHeight": 1.35
+      },
+      "color": "#E6E6E6",
+      "align": "left",
+      "valign": "top",
+      "fit": "wrap"
+    }
+  ]
+}
